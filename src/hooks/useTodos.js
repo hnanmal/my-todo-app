@@ -7,6 +7,7 @@ import { db } from "../firebase";
 export function useTodos() {
   const [todos, setTodos] = useState([]);
 
+  
   const fetchTodos = async () => {
     const snapshot = await getDocs(collection(db, "todos"));
     const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -30,9 +31,16 @@ export function useTodos() {
     setTodos(prev => prev.filter(t => t.id !== id));
   };
 
+  const updateTags = async (id, tags) => {
+    await updateDoc(doc(db, "todos", id), { tags });
+    setTodos(prev =>
+      prev.map(t => (t.id === id ? { ...t, tags } : t))
+    );
+  };
+
   useEffect(() => {
     fetchTodos();
   }, []);
 
-  return { todos, addTodo, toggleTodo, deleteTodo };
+  return { todos, addTodo, toggleTodo, deleteTodo, updateTags };
 }

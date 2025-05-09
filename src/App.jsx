@@ -1,15 +1,26 @@
 // src/App.jsx
-import { useRef } from "react";
+import { useState } from "react";
+
 import { useTodos } from "./hooks/useTodos";
 import { createTodoHandlers } from "./handlers/todoHandlers";
 import TodoItem from "./components/TodoItem";
+import TodoInput from "./components/TodoInput";
+import TagFilter from "./components/TagFilter";
 
 export default function App() {
-  const inputRef = useRef();
-  const { todos, addTodo, toggleTodo, deleteTodo } = useTodos();
+  const { todos, addTodo, toggleTodo, deleteTodo, updateTags } = useTodos();
   const { handleAdd, handleToggle, handleDelete } = createTodoHandlers({
     addTodo, toggleTodo, deleteTodo,
   });
+  const [activeFilterTag, setActiveFilterTag] = useState(null);
+  const [activeTags, setActiveTags] = useState([]);
+  const visibleTodos =
+    activeTags.length === 0
+      ? todos
+      : todos.filter(todo =>
+          (todo.tags || []).some(tag => activeTags.includes(tag))
+        );
+
 
   return (
     <div className="min-h-screen w-full bg-gray-100 flex flex-col items-center pt-10 overflow-y-auto">
@@ -17,31 +28,22 @@ export default function App() {
         📝 Todo 메모장
       </h1>
 
-      <form
-        onSubmit={(e) => handleAdd(e, inputRef)}
-        className="flex flex-col sm:flex-row gap-2 mb-6 w-full px-4 max-w-md"
-      >
-        <input
-          ref={inputRef}
-          type="text"
-          placeholder="할 일을 입력하세요"
-          className="flex-1 px-4 py-3 rounded border border-gray-300 text-sm focus:outline-none focus:ring-2 focus:ring-blue-400"
-        />
-        <button
-          type="submit"
-          className="bg-blue-500 text-white px-4 py-3 rounded hover:bg-blue-600"
-        >
-          추가
-        </button>
-      </form>
+      <TodoInput onAdd={(text) => addTodo(text)} />
+
+      <TagFilter
+        todos={todos}
+        activeTags={activeTags}
+        setActiveTags={setActiveTags}
+      />
 
       <ul className="w-full max-w-md px-4">
-        {todos.map((todo) => (
+        {visibleTodos.map((todo) => (
           <TodoItem
             key={todo.id}
             todo={todo}
-            onToggle={handleToggle}
-            onDelete={handleDelete}
+            onToggle={toggleTodo}
+            onDelete={deleteTodo}
+            onUpdateTags={updateTags}
           />
         ))}
       </ul>

@@ -1,16 +1,16 @@
 // src/handlers/todoHandlers.js
+
 export function createTodoHandlers({ addTodo, toggleTodo, deleteTodo }) {
-    return {
-      handleAdd: (e, inputRef) => {
-        e.preventDefault();
-        const text = inputRef.current.value.trim();
-        if (text) {
-          addTodo(text);
-          inputRef.current.value = "";
-        }
-      },
-      handleToggle: (id) => toggleTodo(id),
-      handleDelete: (id) => deleteTodo(id),
-    };
-  }
-  
+  return {
+    handleAdd: (e, text, tags = []) => {
+      e.preventDefault();
+      const trimmed = text.trim();
+      if (trimmed) {
+        addTodo(trimmed, tags); // ✅ Firestore 저장
+        reset();             // ✅ 입력 필드 초기화
+      }
+    },
+    handleToggle: (id) => toggleTodo(id),
+    handleDelete: (id) => deleteTodo(id),
+  };
+}
