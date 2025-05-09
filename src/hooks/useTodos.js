@@ -1,31 +1,38 @@
 // src/hooks/useTodos.js
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import { db } from "../firebase";
 
-const STORAGE_KEY = "todo-data";
 
 export function useTodos() {
-  const [todos, setTodos] = useState(() => {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [todos, setTodos] = useState([]);
+
+  const fetchTodos = async () => {
+    const snapshot = await getDocs(collection(db, "todos"));
+    const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+    setTodos(loaded);
+  };
+
+  const addTodo = async (text) => {
+    const docRef = await addDoc(collection(db, "todos"), { text, done: false });
+    setTodos(prev => [...prev, { id: docRef.id, text, done: false }]);
+  };
+
+  const toggleTodo = async (id) => {
+    const todo = todos.find(t => t.id === id);
+    const updated = { ...todo, done: !todo.done };
+    await updateDoc(doc(db, "todos", id), { done: updated.done });
+    setTodos(prev => prev.map(t => t.id === id ? updated : t));
+  };
+
+  const deleteTodo = async (id) => {
+    await deleteDoc(doc(db, "todos", id));
+    setTodos(prev => prev.filter(t => t.id !== id));
+  };
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(todos));
-  }, [todos]);
-
-  const addTodo = (text) => {
-    setTodos([...todos, { id: Date.now(), text, done: false }]);
-  };
-
-  const toggleTodo = (id) => {
-    setTodos(todos.map(todo =>
-      todo.id === id ? { ...todo, done: !todo.done } : todo
-    ));
-  };
-
-  const deleteTodo = (id) => {
-    setTodos(todos.filter(todo => todo.id !== id));
-  };
+    fetchTodos();
+  }, []);
 
   return { todos, addTodo, toggleTodo, deleteTodo };
 }
