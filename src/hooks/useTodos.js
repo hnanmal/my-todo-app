@@ -1,46 +1,61 @@
 // src/hooks/useTodos.js
 import { useEffect, useState } from "react";
-import { collection, getDocs, addDoc, deleteDoc, doc, updateDoc } from "firebase/firestore";
+import {
+  collection,
+  addDoc,
+  deleteDoc,
+  doc,
+  updateDoc,
+  onSnapshot,
+  orderBy,
+  query,
+  serverTimestamp,
+} from "firebase/firestore";
 import { db } from "../firebase";
-
 
 export function useTodos() {
   const [todos, setTodos] = useState([]);
 
-  
-  const fetchTodos = async () => {
-    const snapshot = await getDocs(collection(db, "todos"));
-    const loaded = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-    setTodos(loaded);
+  // ✅ 실시간 동기화
+  useEffect(() => {
+    const q = query(collection(db, "todos"), orderBy("createdAt", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const loaded = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      }));
+      setTodos(loaded);
+    });
+
+    return () => unsubscribe(); // cleanup on unmount
+  }, []);
+
+  // ✅ 추가
+  const addTodo = async (text, tags = []) => {
+    await addDoc(collection(db, "todos"), {
+      text,
+      done: false,
+      tags,
+      createdAt: serverTimestamp() // ✅ 수정된 부분
+    });
   };
 
-  const addTodo = async (text) => {
-    const docRef = await addDoc(collection(db, "todos"), { text, done: false });
-    setTodos(prev => [...prev, { id: docRef.id, text, done: false }]);
-  };
-
+  // ✅ 완료 토글
   const toggleTodo = async (id) => {
     const todo = todos.find(t => t.id === id);
-    const updated = { ...todo, done: !todo.done };
-    await updateDoc(doc(db, "todos", id), { done: updated.done });
-    setTodos(prev => prev.map(t => t.id === id ? updated : t));
+    if (!todo) return;
+    await updateDoc(doc(db, "todos", id), { done: !todo.done });
   };
 
+  // ✅ 삭제
   const deleteTodo = async (id) => {
     await deleteDoc(doc(db, "todos", id));
-    setTodos(prev => prev.filter(t => t.id !== id));
   };
 
+  // ✅ 태그 업데이트
   const updateTags = async (id, tags) => {
     await updateDoc(doc(db, "todos", id), { tags });
-    setTodos(prev =>
-      prev.map(t => (t.id === id ? { ...t, tags } : t))
-    );
   };
-
-  useEffect(() => {
-    fetchTodos();
-  }, []);
 
   return { todos, addTodo, toggleTodo, deleteTodo, updateTags };
 }
